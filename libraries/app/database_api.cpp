@@ -70,6 +70,7 @@ class database_api_impl : public std::enable_shared_from_this<database_api_impl>
       fc::variant_object get_config()const;
       chain_id_type get_chain_id()const;
       dynamic_global_property_object get_dynamic_global_properties()const;
+      global_betting_statistics_object get_global_betting_statistics() const;
 
       // Keys
       vector<vector<account_id_type>> get_key_references( vector<public_key_type> key )const;
@@ -421,6 +422,11 @@ dynamic_global_property_object database_api::get_dynamic_global_properties()cons
 dynamic_global_property_object database_api_impl::get_dynamic_global_properties()const
 {
    return _db.get(dynamic_global_property_id_type());
+}
+
+global_betting_statistics_object database_api_impl::get_global_betting_statistics() const
+{
+   return _db.get(global_betting_statistics_id_type());
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -895,45 +901,25 @@ vector<sport_object> database_api::list_sports() const
 vector<sport_object> database_api_impl::list_sports() const
 {
    const auto& sport_object_idx = _db.get_index_type<sport_object_index>().indices().get<by_id>();
-   vector<sport_object> result;
-   for (const sport_object& sport : sport_object_idx)
-   {
-      result.emplace_back(sport);
-   }
-   return result;
+   return boost::copy_range<vector<sport_object> >(sport_object_idx);
 }
 
 vector<event_group_object> database_api_impl::list_event_groups(sport_id_type sport_id) const
 {
-   vector<event_group_object> result;
    const auto& event_group_idx = _db.get_index_type<event_group_object_index>().indices().get<by_sport_id>();
-   for (const event_group_object& event_group : event_group_idx)
-   {
-      result.emplace_back(event_group);
-   }
-   return result;
+   return boost::copy_range<vector<event_group_object> >(event_group_idx.equal_range(sport_id));
 }
 
 vector<betting_market_group_object> database_api_impl::list_betting_market_groups(event_id_type event_id) const
 {
-   vector<betting_market_group_object> result;
    const auto& betting_market_group_idx = _db.get_index_type<betting_market_group_object_index>().indices().get<by_event_id>();
-   for (const betting_market_group_object& betting_market_group : betting_market_group_idx)
-   {
-      result.emplace_back(betting_market_group);
-   }
-   return result;
+   return boost::copy_range<vector<betting_market_group_object> >(betting_market_group_idx.equal_range(event_id));
 }
 
 vector<betting_market_object> database_api_impl::list_betting_markets(betting_market_group_id_type betting_market_group_id) const
 {
-   vector<betting_market_object> result;
    const auto& betting_market_idx = _db.get_index_type<betting_market_object_index>().indices().get<by_betting_market_group_id>();
-   for (const betting_market_object& betting_market : betting_market_idx)
-   {
-      result.emplace_back(betting_market);
-   }
-   return result;
+   return boost::copy_range<vector<betting_market_object> >(betting_market_idx.equal_range(betting_market_group_id));
 }
 
 //////////////////////////////////////////////////////////////////////

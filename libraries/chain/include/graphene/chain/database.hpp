@@ -361,6 +361,25 @@ namespace graphene { namespace chain {
                    asset max_settlement);
          ///@}
 
+         //////////////////// db_bet.cpp ////////////////////
+
+         /// @{ @group Betting Market Helpers
+         void cancel_bet(const bet_object& bet, bool create_virtual_op = true);
+         void cancel_all_unmatched_bets_on_betting_market(const betting_market_object& betting_market);
+         void cancel_all_betting_markets_for_event(const event_object&);
+         void resolve_betting_market(const betting_market_object& betting_market, 
+                                     betting_market_resolution_type resolution);
+         /**
+          * @brief Process a new bet
+          * @param new_bet_object The new bet to process
+          * @return true if order was completely filled; false otherwise
+          *
+          * This function takes a new bet and attempts to match it with existing
+          * bets already on the books.
+          */
+         bool place_bet(const bet_object& new_bet_object);
+         ///@}
+
          /**
           * @return true if the order was completely filled and thus freed.
           */

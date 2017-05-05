@@ -23,33 +23,30 @@
  */
 #pragma once
 
-#include <graphene/chain/protocol/operations.hpp>
-#include <graphene/chain/evaluator.hpp>
-#include <graphene/chain/database.hpp>
+#include <graphene/chain/protocol/types.hpp>
+#include <graphene/db/object.hpp>
+#include <graphene/db/generic_index.hpp>
 
 namespace graphene { namespace chain {
 
-   class event_create_evaluator : public evaluator<event_create_evaluator>
-   {
-      public:
-         typedef event_create_operation operation_type;
+class database;
 
-         void_result do_evaluate( const event_create_operation& o );
-         object_id_type do_apply( const event_create_operation& o );
-      private:
-         event_group_id_type event_group_id;
-         vector<competitor_id_type> competitors;
-   };
+class global_betting_statistics_object : public graphene::db::abstract_object< global_betting_statistics_object >
+{
+   public:
+      static const uint8_t space_id = implementation_ids;
+      static const uint8_t type_id = impl_global_betting_statistics_object_type;
 
-   class event_update_status_evaluator : public evaluator<event_update_status_evaluator>
-   {
-      public:
-         typedef event_update_status_operation operation_type;
+      uint32_t number_of_active_events;
+      map<asset_id_type, share_type> total_amount_staked;
+};
 
-         void_result do_evaluate( const event_update_status_operation& o );
-         void_result do_apply( const event_update_status_operation& o );
-      private:
-         const event_object* _event_to_update = nullptr;
-   };
+typedef multi_index_container<
+   global_betting_statistics_object,
+   indexed_by<
+     ordered_unique< tag<by_id>, member< object, object_id_type, &object::id > > > > global_betting_statistics_object_multi_index_type;
+typedef generic_index<global_betting_statistics_object, global_betting_statistics_object_multi_index_type> global_betting_statistics_object_index;
 
 } } // graphene::chain
+
+FC_REFLECT_DERIVED( graphene::chain::global_betting_statistics_object, (graphene::db::object), (number_of_active_events)(total_amount_staked) )

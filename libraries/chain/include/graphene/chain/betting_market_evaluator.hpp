@@ -58,6 +58,33 @@ namespace graphene { namespace chain {
 
          void_result do_evaluate( const bet_place_operation& o );
          object_id_type do_apply( const bet_place_operation& o );
+      private:
+         const betting_market_group_object* _betting_market_group;
+         const betting_market_object* _betting_market;
+         const asset_object* _asset;
+         share_type _stake_plus_fees;
+   };
+
+   class bet_cancel_evaluator : public evaluator<bet_cancel_evaluator>
+   {
+      public:
+         typedef bet_cancel_operation operation_type;
+
+         void_result do_evaluate( const bet_cancel_operation& o );
+         void_result do_apply( const bet_cancel_operation& o );
+      private:
+         const bet_object* _bet_to_cancel;
+   };
+
+   class betting_market_resolve_evaluator : public evaluator<betting_market_resolve_evaluator>
+   {
+      public:
+         typedef betting_market_resolve_operation operation_type;
+
+         void_result do_evaluate( const betting_market_resolve_operation& o );
+         void_result do_apply( const betting_market_resolve_operation& o );
+      private:
+         const betting_market_object* _betting_market;
    };
 
 } } // graphene::chain

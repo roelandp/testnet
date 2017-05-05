@@ -169,3 +169,33 @@
 ///@}
 
 #define GRAPHENE_FBA_STEALTH_DESIGNATED_ASSET (asset_id_type(743))
+
+/**
+ * Betting-related constants.
+ *
+ * We store bet multipliers as fixed-precision uint32_t.  These values are
+ * the maximum power-of-ten bet we can have on a "symmetric" market:
+ * (decimal)     1.0001  - 10001
+ * (fractional)  1:10000 - 10000:1
+ */
+///@{
+/// betting odds (multipliers) are stored as fixed-precision, divide by this to get the actual multiplier
+#define GRAPHENE_BETTING_ODDS_PRECISION 10000
+/// the smallest bet multiplier we will accept
+#define GRAPHENE_BETTING_MIN_MULTIPLIER 10001
+/// the largest bet multiplier we will accept
+#define GRAPHENE_BETTING_MAX_MULTIPLIER 100010000
+///@}
+#define GRAPHENE_DEFAULT_MIN_BET_MULTIPLIER 10100
+#define GRAPHENE_DEFAULT_MAX_BET_MULTIPLIER 10000000
+#define GRAPHENE_DEFAULT_PERMITTED_BETTING_ODDS_INCREMENTS { {    20000,    100},  /* <=    2:  0.01 */ \
+                                                             {    30000,    200},  /* <=    3:  0.02 */ \
+                                                             {    40000,    500},  /* <=    4:  0.05 */ \
+                                                             {    60000,   1000},  /* <=    6:  0.10 */ \
+                                                             {   100000,   2000},  /* <=   10:  0.20 */ \
+                                                             {   200000,   5000},  /* <=   20:  0.50 */ \
+                                                             {   300000,  10000},  /* <=   30:  1.00 */ \
+                                                             {   500000,  20000},  /* <=   50:  2.00 */ \
+                                                             {  1000000,  50000},  /* <=  100:  5.00 */ \
+                                                             { 10000000, 100000} } /* <= 1000: 10.00 */ 
+#define GRAPHENE_DEFAULT_BETTING_PERCENT_FEE (2 * GRAPHENE_1_PERCENT)

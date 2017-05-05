@@ -29,7 +29,7 @@
 namespace graphene { namespace chain {
 
 
-enum betting_market_type {
+enum class betting_market_type {
    moneyline,
    spread,
    over_under,
@@ -88,20 +88,87 @@ struct betting_market_create_operation : public base_operation
    void            validate()const;
 };
 
-enum bet_type { back_bet, lay_bet };
-struct bet_place_operation : public base_operation
+enum class betting_market_resolution_type {
+   win,
+   not_win,
+   cancel,
+   BETTING_MARKET_RESOLUTION_COUNT
+};
+
+struct betting_market_resolve_operation : public base_operation
 {
    struct fee_parameters_type { uint64_t fee = GRAPHENE_BLOCKCHAIN_PRECISION; };
+   asset             fee;
+
+   betting_market_id_type betting_market_id;
+
+   betting_market_resolution_type resolution;
+
+   extensions_type   extensions;
+
+   account_id_type fee_payer()const { return GRAPHENE_WITNESS_ACCOUNT; }
+   void            validate()const;
+};
+
+struct betting_market_resolved_operation : public base_operation
+{
+   struct fee_parameters_type {};
+
+   account_id_type bettor_id;
+   betting_market_id_type betting_market_id;
+   betting_market_resolution_type resolution;
+   asset winnings;
+   share_type fees_paid;
+
+   asset             fee; // unused in a virtual operation
+
+   betting_market_resolved_operation() {}
+   betting_market_resolved_operation(account_id_type bettor_id,
+                                     betting_market_id_type betting_market_id,
+                                     betting_market_resolution_type resolution,
+                                     asset winnings,
+                                     share_type fees_paid) :
+      bettor_id(bettor_id),
+      betting_market_id(betting_market_id),
+      resolution(resolution),
+      winnings(winnings),
+      fees_paid(fees_paid)
+   {}
+
+   account_id_type fee_payer()const { return bettor_id; }
+   void            validate()const { FC_ASSERT(false, "virtual operation"); }
+   /// This is a virtual operation; there is no fee
+   share_type      calculate_fee(const fee_parameters_type& k)const { return 0; }
+};
+
+enum class bet_type { back, lay };
+
+struct bet_place_operation : public base_operation
+{
+   struct fee_parameters_type 
+   { 
+      uint64_t fee = GRAPHENE_BLOCKCHAIN_PRECISION;     // fixed fee charged upon placing the bet
+      uint16_t percentage_fee = 2 * GRAPHENE_1_PERCENT; // charged when bet is matched
+   };
    asset             fee;
 
    account_id_type bettor_id;
    
    betting_market_id_type betting_market_id;
 
-   share_type amount_to_bet;
+   /// the bettor's stake
+   asset amount_to_bet;
 
-   share_type amount_to_win;
+   // decimal odds as seen by the backer, even if this is a lay bet.
+   // this is a fixed-precision number scaled by GRAPHENE_BETTING_ODDS_PRECISION.
+   //
+   // For example, an even 1/1 bet would be decimal odds 2.0, so backer_multiplier 
+   // would be 2 * GRAPHENE_BETTING_ODDS_PRECISION.
+   bet_multiplier_type backer_multiplier;
 
+   // the amount the blockchain reserves to pay the percentage fee on matched bets.
+   // when this bet is (partially) matched, the blockchain will take (part of) the fee.  If this bet is canceled
+   // the remaining amount will be returned to the bettor (same asset type as the amount_to_bet)
    share_type amount_reserved_for_fees;
 
    bet_type back_or_lay;
@@ -112,6 +179,85 @@ struct bet_place_operation : public base_operation
    void            validate()const;
 };
 
+/**
+ * virtual op generated when a bet is matched
+ */
+struct bet_matched_operation : public base_operation 
+{
+   struct fee_parameters_type {};
+
+   bet_matched_operation(){}
+   bet_matched_operation(account_id_type bettor_id, bet_id_type bet_id, 
+                         asset amount_bet, share_type fees_paid,
+                         bet_multiplier_type backer_multiplier, 
+                         share_type guaranteed_winnings_returned) :
+      bettor_id(bettor_id),
+      bet_id(bet_id),
+      amount_bet(amount_bet),
+      fees_paid(fees_paid),
+      backer_multiplier(backer_multiplier),
+      guaranteed_winnings_returned(guaranteed_winnings_returned)
+   {}
+
+   account_id_type     bettor_id;
+   bet_id_type         bet_id;
+   asset               amount_bet;
+   share_type          fees_paid; // same asset type as amount_bet
+   bet_multiplier_type backer_multiplier; // the actual odds received
+   share_type          guaranteed_winnings_returned; // same asset type as amount_bet
+   asset               fee; // unimportant for a virtual op
+
+   account_id_type fee_payer()const { return bettor_id; }
+   void            validate()const { FC_ASSERT(false, "virtual operation"); }
+
+   /// This is a virtual operation; there is no fee
+   share_type      calculate_fee(const fee_parameters_type& k)const { return 0; }
+};
+
+struct bet_cancel_operation : public base_operation
+{
+   struct fee_parameters_type { uint64_t fee = GRAPHENE_BLOCKCHAIN_PRECISION; };
+   asset             fee;
+
+   /// the bettor who is cancelling the bet
+   account_id_type bettor_id;
+   /// the bet being canceled 
+   bet_id_type bet_to_cancel;
+
+   extensions_type   extensions;
+
+   account_id_type fee_payer()const { return bettor_id; }
+   void            validate()const;
+};
+
+/**
+ * virtual op generated when a bet is canceled
+ */
+struct bet_canceled_operation : public base_operation 
+{
+   struct fee_parameters_type {};
+
+   bet_canceled_operation(){}
+   bet_canceled_operation(account_id_type bettor_id, bet_id_type bet_id, 
+                          asset stake_returned, share_type unused_fees_returned) :
+      bettor_id(bettor_id),
+      bet_id(bet_id),
+      stake_returned(stake_returned),
+      unused_fees_returned(unused_fees_returned)
+   {}
+
+   account_id_type     bettor_id;
+   bet_id_type         bet_id;
+   asset               stake_returned;
+   share_type          unused_fees_returned; // same asset type as stake_returned
+   asset               fee; // unimportant for a virtual op
+
+   account_id_type fee_payer()const { return bettor_id; }
+   void            validate()const { FC_ASSERT(false, "virtual operation"); }
+
+   /// This is a virtual operation; there is no fee
+   share_type      calculate_fee(const fee_parameters_type& k)const { return 0; }
+};
 
 
 } }
@@ -131,7 +277,26 @@ FC_REFLECT( graphene::chain::betting_market_create_operation::fee_parameters_typ
 FC_REFLECT( graphene::chain::betting_market_create_operation, 
             (fee)(group_id)(payout_condition)(asset_id)(extensions) )
 
-FC_REFLECT_ENUM( graphene::chain::bet_type, (back_bet)(lay_bet) )
+FC_REFLECT_ENUM( graphene::chain::betting_market_resolution_type, (win)(not_win)(cancel)(BETTING_MARKET_RESOLUTION_COUNT) )
+
+FC_REFLECT( graphene::chain::betting_market_resolve_operation::fee_parameters_type, (fee) )
+FC_REFLECT( graphene::chain::betting_market_resolve_operation, 
+            (fee)(betting_market_id)(resolution)(extensions) )
+
+FC_REFLECT( graphene::chain::betting_market_resolved_operation::fee_parameters_type, )
+FC_REFLECT( graphene::chain::betting_market_resolved_operation, 
+            (bettor_id)(betting_market_id)(resolution)(winnings)(fees_paid)(fee) )
+
+FC_REFLECT_ENUM( graphene::chain::bet_type, (back)(lay) )
 FC_REFLECT( graphene::chain::bet_place_operation::fee_parameters_type, (fee) )
 FC_REFLECT( graphene::chain::bet_place_operation, 
-            (fee)(bettor_id)(betting_market_id)(amount_to_bet)(amount_to_win)(amount_reserved_for_fees)(back_or_lay)(extensions) )
+            (fee)(bettor_id)(betting_market_id)(amount_to_bet)(backer_multiplier)(amount_reserved_for_fees)(back_or_lay)(extensions) )
+
+FC_REFLECT( graphene::chain::bet_matched_operation::fee_parameters_type, )
+FC_REFLECT( graphene::chain::bet_matched_operation, (bettor_id)(bet_id)(amount_bet)(fees_paid)(backer_multiplier)(guaranteed_winnings_returned) )
+
+FC_REFLECT( graphene::chain::bet_cancel_operation::fee_parameters_type, (fee) )
+FC_REFLECT( graphene::chain::bet_cancel_operation, (bettor_id) (bet_to_cancel) (extensions) )
+
+FC_REFLECT( graphene::chain::bet_canceled_operation::fee_parameters_type, )
+FC_REFLECT( graphene::chain::bet_canceled_operation, (bettor_id)(bet_id)(stake_returned)(unused_fees_returned) )

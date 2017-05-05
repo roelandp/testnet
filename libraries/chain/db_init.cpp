@@ -53,6 +53,7 @@
 #include <graphene/chain/event_group_object.hpp>
 #include <graphene/chain/event_object.hpp>
 #include <graphene/chain/betting_market_object.hpp>
+#include <graphene/chain/global_betting_statistics_object.hpp>
 
 #include <graphene/chain/account_evaluator.hpp>
 #include <graphene/chain/asset_evaluator.hpp>
@@ -159,6 +160,12 @@ const uint8_t betting_market_object::type_id;
 const uint8_t bet_object::space_id;
 const uint8_t bet_object::type_id;
 
+const uint8_t betting_market_position_object::space_id;
+const uint8_t betting_market_position_object::type_id;
+
+const uint8_t global_betting_statistics_object::space_id;
+const uint8_t global_betting_statistics_object::type_id;
+
 
 void database::initialize_evaluators()
 {
@@ -211,6 +218,7 @@ void database::initialize_evaluators()
    register_evaluator<betting_market_group_create_evaluator>();
    register_evaluator<betting_market_create_evaluator>();
    register_evaluator<bet_place_evaluator>();
+   register_evaluator<betting_market_resolve_evaluator>();
 }
 
 void database::initialize_indexes()
@@ -263,6 +271,8 @@ void database::initialize_indexes()
    add_index< primary_index< buyback_index                                > >();
 
    add_index< primary_index< simple_index< fba_accumulator_object       > > >();
+   add_index< primary_index< betting_market_position_index > >();
+   add_index< primary_index< global_betting_statistics_object_index > >();
 }
 
 void database::init_genesis(const genesis_state_type& genesis_state)
@@ -441,6 +451,9 @@ void database::init_genesis(const genesis_state_type& genesis_state)
       p.dynamic_flags = 0;
       p.witness_budget = 0;
       p.recent_slots_filled = fc::uint128::max_value();
+   });
+   create<global_betting_statistics_object>([&](global_betting_statistics_object& betting_statistics) {
+      betting_statistics.number_of_active_events = 0;
    });
 
    FC_ASSERT( (genesis_state.immutable_parameters.min_witness_count & 1) == 1, "min_witness_count must be odd" );
